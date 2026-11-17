@@ -87,7 +87,8 @@ On the phone (iOS 16.4+):
 
 ### iPhone share sheet
 
-Build a Shortcut that accepts *Images, Media, Files, Text, URLs* from the share sheet:
+**[Get the tsdrop Shortcut](https://www.icloud.com/shortcuts/b904536ab5fb4e9fac437617a410812c)**, or build
+one that accepts *Images, Media, Files, Text, URLs* from the share sheet:
 
 - **Repeat with Each** item → **Get Contents of URL**
   `POST http://RELAY-IP:53318/drop?from=iPhone`

@@ -202,9 +202,11 @@ func (rv *receiver) gotText(sender, text string) {
 }
 
 func extFor(ct string) string {
-	switch ct { // mime's first pick for these is obscure (.jfif, .mov is fine)
+	switch ct { // mime's first pick for these is obscure (.jfif, .ehtml)
 	case "image/jpeg":
 		return ".jpg"
+	case "text/html":
+		return ".html"
 	case "image/heic":
 		return ".heic"
 	}
