@@ -87,7 +87,7 @@ On the phone (iOS 16.4+):
 
 ### iPhone share sheet
 
-**[Get the tsdrop Shortcut](https://www.icloud.com/shortcuts/df4cc54774d34b1b9fdd395069d4482f)**, or build
+**[Get the tsdrop Shortcut](https://www.icloud.com/shortcuts/351ae447ecec4bbbbd6b43f370f58a52)**, or build
 one that accepts *Images, Media, Files, Text, URLs* from the share sheet:
 
 - **Repeat with Each** item → **Get Contents of URL**
