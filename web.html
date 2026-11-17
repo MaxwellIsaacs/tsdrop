@@ -1,0 +1,293 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="tsdrop">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="theme-color" content="#1f2124">
+<link rel="apple-touch-icon" href="/icon.png">
+<link rel="manifest" href="/manifest.webmanifest">
+<link rel="icon" href="/icon.svg">
+<title>tsdrop</title>
+<style>
+  :root {
+    --bg: #1f2124; --bg-alt: #25282c; --base0: #17191b; --base1: #2b2e33; --base2: #33373c; --base3: #3e4349;
+    --base4: #585e66; --label: #7d8590; --fg: #d8d4cc; --accent: #88a4c0; --ok: #a3b38c; --err: #d0786a;
+  }
+  * { box-sizing: border-box; border-radius: 0; margin: 0; -webkit-tap-highlight-color: transparent; }
+  html, body { background: var(--bg); color: var(--fg); touch-action: manipulation; -webkit-text-size-adjust: 100%; }
+  body {
+    font: 15px/1.45 "Geist Mono", ui-monospace, "SF Mono", Menlo, monospace;
+    padding: max(20px, env(safe-area-inset-top)) 16px max(20px, env(safe-area-inset-bottom));
+    min-height: 100dvh; display: flex; flex-direction: column; gap: 10px;
+  }
+  header { display: flex; justify-content: space-between; align-items: baseline; margin-bottom: 14px; }
+  header .to { color: var(--label); font-size: 13px; }
+  header .to b { color: var(--fg); font-weight: 400; }
+  .label { color: var(--label); font-weight: 700; font-size: 11px; letter-spacing: 1px; text-transform: uppercase;
+           display: flex; justify-content: space-between; }
+  .label span { color: var(--base3); font-weight: 400; letter-spacing: 0; text-transform: none; }
+  .pick {
+    display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 6px;
+    border: 1px dashed var(--base3); padding: 34px 16px; text-align: center; cursor: pointer; color: var(--label);
+  }
+  .pick:active { border: 1px solid var(--accent); background: var(--bg-alt); }
+  .pick .big { color: var(--fg); font-size: 17px; }
+  .pick svg { width: 30px; height: 30px; margin-bottom: 6px; }
+  input[type=file] { display: none; }
+  textarea {
+    width: 100%; min-height: 84px; resize: vertical; font: inherit; font-size: 16px; color: var(--fg); /* <16px makes iOS zoom on focus */
+    background: var(--base0); border: 1px solid var(--base2); padding: 10px; outline: none; caret-color: var(--accent);
+  }
+  textarea:focus { border-color: var(--accent); }
+  textarea::placeholder { color: var(--base4); }
+  button {
+    font: inherit; font-weight: 700; padding: 13px; border: 1px solid var(--accent);
+    background: var(--accent); color: var(--bg); width: 100%;
+  }
+  button:disabled { background: var(--base1); border-color: var(--base2); color: var(--base4); }
+  .bar { height: 2px; background: var(--base1); visibility: hidden; margin-top: 4px; }
+  .bar i { display: block; height: 100%; width: 0; background: var(--accent); }
+  #status { color: var(--label); font-size: 13px; min-height: 1.4em; overflow-wrap: anywhere; }
+  #status.ok { color: var(--ok); } #status.err { color: var(--err); }
+  .gap { height: 8px; }
+  #inbox { display: flex; flex-direction: column; gap: 6px; }
+  #inbox:empty::before { content: "nothing waiting — tsdrop send --to iphone FILE"; color: var(--base4); font-size: 13px; }
+  .item { display: flex; gap: 10px; align-items: center; background: var(--bg-alt); border: 1px solid var(--base2); padding: 10px; }
+  .item.new { border-color: var(--accent); }
+  .item.flash { animation: flash 1.6s ease-out; }
+  @keyframes flash { from { background: var(--base3); } }
+  #viewer { position: fixed; inset: 0; z-index: 10; background: var(--base0); display: none; flex-direction: column;
+            padding: max(12px, env(safe-area-inset-top)) 12px max(12px, env(safe-area-inset-bottom)); gap: 10px; }
+  #viewer.show { display: flex; }
+  #viewer .top { display: flex; gap: 8px; align-items: center; }
+  #viewer .top .t { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: var(--label); font-size: 13px; }
+  #viewer .top button { width: auto; padding: 9px 14px; }
+  #viewer .top .close { background: none; color: var(--fg); border-color: var(--base3); }
+  #viewer .stage { flex: 1; min-height: 0; display: flex; align-items: center; justify-content: center; overflow: auto; }
+  #viewer .stage img, #viewer .stage video { max-width: 100%; max-height: 100%; object-fit: contain; }
+  #viewer .stage iframe { width: 100%; height: 100%; border: 0; background: #fff; }
+  #viewer .stage .none { color: var(--label); text-align: center; white-space: pre-line; }
+  #notif { display: none; font-size: 13px; padding: 10px; background: none; color: var(--accent); }
+  #notif.show { display: block; }
+  #notifhint { display: none; color: var(--label); font-size: 12px; overflow-wrap: anywhere; }
+  #notifhint.show { display: block; }
+  .item .body { flex: 1; min-width: 0; }
+  .item .name { overflow-wrap: anywhere; color: var(--fg); text-decoration: none; display: block; }
+  .item .meta { color: var(--label); font-size: 12px; }
+  .item img { width: 52px; height: 52px; object-fit: cover; background: var(--base0); flex: none; }
+  .item button { width: auto; padding: 8px 10px; font-size: 13px; background: none; color: var(--accent); }
+  .item button.x { border-color: var(--base3); color: var(--label); }
+</style>
+</head>
+<body>
+  <header><span>tsdrop</span><span class="to">→ <b>{{.Alias}}</b></span></header>
+
+  <div class="label">for you<span id="boxcount"></span></div>
+  <div id="inbox"></div>
+  <div id="viewer"><div class="top"><button class="close">✕</button><span class="t"></span><button class="share" disabled>share / save</button></div><div class="stage"></div></div>
+  <button id="notif">turn on notifications</button>
+  <div id="notifhint"></div>
+
+  <div class="gap"></div>
+  <div class="label">files<span>uploads right away</span></div>
+  <label class="pick" for="files">
+    <svg viewBox="0 0 128 128" fill="none" stroke="#88a4c0" stroke-width="9" stroke-linecap="square">
+      <path d="M64 92V30"/><path d="M38 54l26-26 26 26"/><path d="M26 108h76" stroke="#585e66" stroke-width="7"/>
+    </svg>
+    <span class="big">choose photos / files</span>
+    <span>saved to {{.Dir}}</span>
+  </label>
+  <input id="files" type="file" multiple>
+
+  <div class="gap"></div>
+  <div class="label">message<span>lands on the clipboard</span></div>
+  <textarea id="text" placeholder="text or link…" autocapitalize="off" autocomplete="off"></textarea>
+  <button id="send" disabled>send message</button>
+
+  <div class="bar"><i></i></div>
+  <div id="status"></div>
+
+<script>
+  const $ = (s) => document.querySelector(s);
+  // iOS ignores user-scalable=no; block pinch (gesture*) and double-tap zoom ourselves.
+  // (The photo viewer is exempt: zooming into a picture is useful.)
+  const inViewer = (e) => e.target.closest && e.target.closest("#viewer .stage");
+  for (const ev of ["gesturestart", "gesturechange"]) document.addEventListener(ev, (e) => { if (!inViewer(e)) e.preventDefault(); }, { passive: false });
+  document.addEventListener("touchmove", (e) => { if (e.touches.length > 1 && !inViewer(e)) e.preventDefault(); }, { passive: false });
+  const status = (t, k = "") => { $("#status").textContent = t; $("#status").className = k; };
+  const bar = (f) => { $(".bar").style.visibility = f == null ? "hidden" : "visible"; $(".bar i").style.width = ((f || 0) * 100) + "%"; };
+
+  function post(body, label) {
+    return new Promise((done) => {
+      const x = new XMLHttpRequest();
+      x.open("POST", "/drop?from=" + encodeURIComponent("iPhone"));
+      x.upload.onprogress = (e) => { if (e.lengthComputable) { bar(e.loaded / e.total); status(`${label}  ${Math.floor(e.loaded * 100 / e.total)}%`); } };
+      x.onload = () => { bar(null); x.status === 200 ? status("✓ sent", "ok") : status(x.responseText || "failed", "err"); done(); };
+      x.onerror = () => { bar(null); status("can't reach {{.Alias}} — is Tailscale on?", "err"); done(); };
+      x.send(body);
+    });
+  }
+
+  $("#files").addEventListener("change", async (e) => {
+    const files = [...e.target.files];
+    if (!files.length) return;
+    const fd = new FormData();
+    files.forEach((f) => fd.append("file", f, f.name));
+    bar(0);
+    await post(fd, files.length === 1 ? files[0].name : `${files.length} files`);
+    e.target.value = "";
+  });
+
+  $("#text").addEventListener("input", () => { $("#send").disabled = !$("#text").value.trim(); });
+  $("#send").addEventListener("click", async () => {
+    const fd = new FormData();
+    fd.append("text", $("#text").value);
+    $("#send").disabled = true;
+    await post(fd, "message");
+    if ($("#status").className === "ok") $("#text").value = "";
+    $("#send").disabled = !$("#text").value.trim();
+  });
+
+  // --- outbox: things sent to this phone wait on the relay until fetched ---
+  const seen = new Set(JSON.parse(localStorage.getItem("seen") || "[]"));
+  const size = (n) => n < 1024 ? n + " B" : n < 1 << 20 ? (n / 1024).toFixed(0) + " KB" : (n / (1 << 20)).toFixed(1) + " MB";
+  const ago = (t) => { const s = (Date.now() - new Date(t)) / 1000; return s < 60 ? "just now" : s < 3600 ? Math.floor(s / 60) + "m ago" : s < 86400 ? Math.floor(s / 3600) + "h ago" : Math.floor(s / 86400) + "d ago"; };
+  const el = (tag, props = {}, ...kids) => { const e = Object.assign(document.createElement(tag), props); e.append(...kids); return e; };
+
+  // Plain-HTTP page = no secure context, so navigator.clipboard is missing; fall back to execCommand.
+  function copy(text) {
+    if (navigator.clipboard && window.isSecureContext) return navigator.clipboard.writeText(text);
+    const t = el("textarea", { value: text }); t.style.position = "fixed"; t.style.opacity = "0";
+    document.body.append(t); t.focus(); t.setSelectionRange(0, text.length);
+    const ok = document.execCommand("copy"); t.remove();
+    return ok ? Promise.resolve() : Promise.reject();
+  }
+  const del = (id) => fetch("/outbox/" + id, { method: "DELETE" }).then(refresh);
+
+  let last = "";
+  async function refresh() {
+    let items;
+    try { items = await (await fetch("/outbox", { cache: "no-store" })).json(); } catch { return; }
+    const key = JSON.stringify(items);
+    if (key === last) return;
+    last = key;
+    $("#boxcount").textContent = items.length ? items.length + " waiting" : "";
+    $("#inbox").replaceChildren(...items.map((it) => {
+      const fresh = !seen.has(it.id);
+      const meta = el("div", { className: "meta", textContent: `from ${it.from} · ${ago(it.time)}` + (it.text ? "" : ` · ${size(it.size)}`) });
+      const row = el("div", { className: "item" + (fresh ? " new" : "") });
+      if (it.text) {
+        const isURL = /^https?:\/\/\S+$/.test(it.text);
+        const name = isURL ? el("a", { className: "name", href: it.text, target: "_blank", textContent: it.text })
+                           : el("div", { className: "name", textContent: it.text });
+        const c = el("button", { textContent: "copy" });
+        c.onclick = () => copy(it.text).then(() => (c.textContent = "✓"), () => (c.textContent = "hold to copy"));
+        row.append(el("div", { className: "body" }, name, meta), c);
+      } else {
+        const href = "/outbox/" + it.id;
+        // Never navigate: in the home-screen app a file page has no way back.
+        const show = (e) => { e.preventDefault(); viewer(it); };
+        if (it.type.startsWith("image/")) row.append(el("a", { href, onclick: show }, el("img", { src: href, loading: "lazy" })));
+        row.append(el("div", { className: "body" }, el("a", { className: "name", href, onclick: show, textContent: it.name }), meta));
+        row.append(el("button", { textContent: "open", onclick: show }));
+      }
+      const x = el("button", { className: "x", textContent: "✕" });
+      x.onclick = () => del(it.id);
+      row.append(x);
+      row.id = "i-" + it.id;
+      row.addEventListener("click", () => { seen.add(it.id); localStorage.setItem("seen", JSON.stringify([...seen].slice(-200))); row.classList.remove("new"); });
+      return row;
+    }));
+  }
+  // --- viewer: preview in-page, save via the iOS share sheet ---
+  let viewFile = null, viewURL = null;
+  function closeViewer() {
+    $("#viewer").classList.remove("show"); $("#viewer .stage").replaceChildren();
+    if (viewURL) URL.revokeObjectURL(viewURL); viewFile = viewURL = null;
+  }
+  async function viewer(it) {
+    seen.add(it.id);
+    $("#viewer .t").textContent = it.name;
+    $("#viewer .share").disabled = true; $("#viewer .share").textContent = "loading…";
+    $("#viewer .stage").replaceChildren();
+    $("#viewer").classList.add("show");
+    try {
+      // Fetch first so the share tap shares an in-memory file (iOS drops the gesture if share() waits on the network).
+      const blob = await (await fetch("/outbox/" + it.id)).blob();
+      viewFile = new File([blob], it.name, { type: it.type });
+      viewURL = URL.createObjectURL(blob);
+    } catch { $("#viewer .stage").replaceChildren(el("div", { className: "none", textContent: "couldn't load it" })); return; }
+    const t = it.type, stage = $("#viewer .stage");
+    if (t.startsWith("image/")) stage.append(el("img", { src: viewURL }));
+    else if (t.startsWith("video/")) stage.append(el("video", { src: viewURL, controls: true, playsInline: true }));
+    else if (t === "application/pdf" || t.startsWith("text/")) stage.append(el("iframe", { src: "/outbox/" + it.id }));
+    else stage.append(el("div", { className: "none", textContent: `${it.name}\n${size(it.size)} — use share / save` }));
+    const canShare = navigator.canShare && navigator.canShare({ files: [viewFile] });
+    $("#viewer .share").disabled = false;
+    $("#viewer .share").textContent = canShare ? "share / save" : "download";
+  }
+  $("#viewer .close").addEventListener("click", closeViewer);
+  $("#viewer .share").addEventListener("click", async () => {
+    if (!viewFile) return;
+    if (navigator.canShare && navigator.canShare({ files: [viewFile] })) {
+      try { await navigator.share({ files: [viewFile] }); } catch (e) { if (e.name !== "AbortError") hint("share failed: " + e.message); }
+    } else {
+      el("a", { href: viewURL, download: viewFile.name }).click();
+    }
+  });
+
+  // Jump to the item a notification pointed at (#id), after the list has it.
+  async function reveal(hash) {
+    const id = (hash || "").replace(/^#/, "");
+    if (!id) return;
+    last = ""; await refresh();
+    const row = document.getElementById("i-" + id);
+    if (row) { row.scrollIntoView({ block: "center" }); row.classList.remove("flash"); void row.offsetWidth; row.classList.add("flash"); }
+    history.replaceState(null, "", "/");
+  }
+  window.addEventListener("hashchange", () => reveal(location.hash));
+
+  // --- web push: needs HTTPS + the home-screen app on iOS ---
+  const standalone = matchMedia("(display-mode: standalone)").matches || navigator.standalone;
+  async function subscribe(ask) {
+    const reg = await navigator.serviceWorker.ready;
+    if (ask && (await Notification.requestPermission()) !== "granted") return false;
+    const { key } = await (await fetch("/push/key")).json();
+    const raw = Uint8Array.from(atob(key.replace(/-/g, "+").replace(/_/g, "/")), (c) => c.charCodeAt(0));
+    const sub = (await reg.pushManager.getSubscription()) || (await reg.pushManager.subscribe({ userVisibleOnly: true, applicationServerKey: raw }));
+    await fetch("/push/subscribe", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(sub) });
+    return true;
+  }
+  function hint(t) { $("#notifhint").textContent = t; $("#notifhint").classList.toggle("show", !!t); }
+  if (window.isSecureContext && "serviceWorker" in navigator) {
+    navigator.serviceWorker.register("/sw.js");
+    navigator.serviceWorker.addEventListener("message", (e) => e.data && e.data.open && reveal(new URL(e.data.open, location.href).hash));
+    if ("PushManager" in window && "Notification" in window) {
+      if (Notification.permission === "granted") subscribe(false).catch(() => {}); // re-register quietly
+      else if (Notification.permission === "default") $("#notif").classList.add("show");
+      else hint("notifications are blocked — Settings › Notifications › tsdrop");
+    } else if (/iPhone|iPad/.test(navigator.userAgent) && !standalone) {
+      hint("for notifications: Share › Add to Home Screen, then open it from there");
+    }
+  } else if (location.protocol === "http:") {
+    hint({{if .HTTPS}}"for notifications, open {{.HTTPS}} and add that to your Home Screen"{{else}}"notifications need HTTPS (see tsdrop recv --https-url)"{{end}});
+  }
+  $("#notif").addEventListener("click", async () => {
+    $("#notif").disabled = true;
+    try {
+      if (await subscribe(true)) { $("#notif").classList.remove("show"); await fetch("/push/test", { method: "POST" }); }
+      else hint("permission not granted");
+    } catch (err) { hint("couldn't enable: " + err.message); }
+    $("#notif").disabled = false;
+  });
+
+  reveal(location.hash);
+  refresh();
+  setInterval(() => document.visibilityState === "visible" && refresh(), 3000);
+  document.addEventListener("visibilitychange", () => document.visibilityState === "visible" && refresh());
+</script>
+</body>
+</html>

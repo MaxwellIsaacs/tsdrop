@@ -1,0 +1,11 @@
+[Desktop Entry]
+Name=tsdrop
+GenericName=Send to device
+Comment=Send files and links to Tailscale peers over LocalSend
+Exec=tsdrop gui %F
+Icon=tsdrop
+Terminal=false
+Type=Application
+Categories=Network;FileTransfer;
+Keywords=airdrop;localsend;tailscale;send;share;phone;
+StartupWMClass=dev.tsdrop.gui

@@ -1,0 +1,11 @@
+[Unit]
+Description=tsdrop receiver (LocalSend over Tailscale)
+After=graphical-session.target
+
+[Service]
+ExecStart=%h/.local/bin/tsdrop recv
+Restart=on-failure
+RestartSec=5
+
+[Install]
+WantedBy=default.target

@@ -1,0 +1,17 @@
+# Always-on relay: copy to ~/.config/systemd/user/ on a box that never sleeps.
+# Set FORWARD to the machine that should end up with the files, and HTTPS_URL
+# to where `tailscale serve --bg --https=53319 http://127.0.0.1:53318` exposes
+# the web app (leave empty to skip phone notifications).
+[Unit]
+Description=tsdrop relay (holds drops until the target is online)
+After=network-online.target tailscaled.service
+
+[Service]
+Environment=FORWARD=my-laptop
+Environment=HTTPS_URL=
+ExecStart=%h/.local/bin/tsdrop recv --dir %h/tsdrop-spool --forward ${FORWARD} --https-url ${HTTPS_URL}
+Restart=always
+RestartSec=5
+
+[Install]
+WantedBy=default.target
